@@ -3,6 +3,8 @@ x-app: &app
   build: ./backend
   environment:
     DATABASE_URL: mysql+pymysql://trial:trialpass@db:3306/indextrial
+    SOURCE_DATABASE_URL: mysql+pymysql://trial:trialpass@db:3306/indextrial
+    TARGET_DATABASE_URL: mysql+pymysql://trial:trialpass@db-next:3306/indextrial
     REDIS_URL: redis://redis:6379/0
     JWT_SECRET: ${JWT_SECRET:-index-trial-local-demo-secret-change-before-use}
     SEED_DEMO: ${SEED_DEMO:-true}
@@ -10,14 +12,26 @@ x-app: &app
     - artifacts:/artifacts
   depends_on:
     db: {condition: service_healthy}
+    db-next: {condition: service_healthy}
     redis: {condition: service_healthy}
 services:
   db:
-    image: mysql:8.0
+    image: mysql:${SOURCE_MYSQL_VERSION:-8.0}
     container_name: ${COMPOSE_PROJECT_NAME:-index-trial}-db
     environment: {MYSQL_DATABASE: indextrial, MYSQL_USER: trial, MYSQL_PASSWORD: trialpass, MYSQL_ROOT_PASSWORD: rootlocalpass}
     ports: ["${DB_PORT:-17741}:3306"]
     volumes: ["dbdata:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 4s
+      retries: 35
+  db-next:
+    image: mysql:${TARGET_MYSQL_VERSION:-8.4}
+    container_name: ${COMPOSE_PROJECT_NAME:-index-trial}-db-next
+    environment: {MYSQL_DATABASE: indextrial, MYSQL_USER: trial, MYSQL_PASSWORD: trialpass, MYSQL_ROOT_PASSWORD: rootlocalpass}
+    ports: ["${DB_NEXT_PORT:-17742}:3306"]
+    volumes: ["dbnextdata:/var/lib/mysql"]
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 5s
@@ -53,6 +67,7 @@ services:
       retries: 20
     depends_on:
       db: {condition: service_healthy}
+      db-next: {condition: service_healthy}
       redis: {condition: service_healthy}
       backend: {condition: service_healthy}
   frontend:
@@ -68,5 +83,6 @@ services:
       retries: 20
 volumes:
   dbdata:
+  dbnextdata:
   redisdata:
   artifacts:

@@ -29,3 +29,6 @@ class CandidateInput(BaseModel):
 class ExperimentInput(BaseModel):
  name:str=Field(min_length=2,max_length=120)
  candidate_id:int
+class CrossTrialInput(BaseModel):
+ name:str=Field(min_length=2,max_length=120)
+ candidate_id:int
